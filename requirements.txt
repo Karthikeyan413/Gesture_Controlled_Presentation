@@ -1,3 +1,5 @@
 opencv-python==4.8.0.76  
 cvzone
 numpy
+python-pptx
+pywin32
