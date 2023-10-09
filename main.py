@@ -18,7 +18,7 @@ pathImages = sorted(os.listdir(os.path.join(os.curdir,folderPath)),key=len)
 # print(pathImages)
 
 #variables
-imgNumber = 0
+imgNumber = 0         
 hs = int(120*1)
 ws = int(213*1)
 gestureThreshold = 300
