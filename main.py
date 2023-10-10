@@ -21,7 +21,7 @@ pathImages = sorted(os.listdir(os.path.join(os.curdir,folderPath)),key=len)
 imgNumber = 0         
 hs = int(120*1)
 ws = int(213*1)
-gestureThreshold = 300
+gestureThreshold = 720
 buttonPressed = False
 buttonCounter = 0
 buttonDelay = 10
@@ -57,7 +57,7 @@ while(True):
         indexFinger = xVal,yVal
 
         if(cy <= gestureThreshold):
-            annotationStart = False
+            # annotationStart = False
             #1 move left
             if fingers == [1,0,0,0,0]:
                 if imgNumber>0:
