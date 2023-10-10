@@ -10,11 +10,12 @@ folderPath = os.path.join(curPath,"Presentation")
 
 #camera setup
 cap = cv2.VideoCapture(0)
-cap.set(3,width)
-cap.set(4,height)
+#setting width and height to video input
+cap.set(cv2.CAP_PROP_FRAME_WIDTH,width)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT,height)
 
 # list of images
-pathImages = sorted(os.listdir(os.path.join(os.curdir,folderPath)),key=len)
+Images = sorted(os.listdir(folderPath))
 # print(pathImages)
 
 #variables
@@ -28,21 +29,57 @@ buttonDelay = 10
 annotations = [[]]
 annotationNumber = 0
 annotationStart = False
+thickness = 5
+imgCurrent = 'currentSlideImage'
+indexFinger = 'indexCoordinates'
 
 #hand detector
 detector = HandDetector(detectionCon=0.8,maxHands=1)
+
+def previous_slide():
+    global imgNumber, buttonPressed, annotationNumber, annotations, annotationStart
+    if imgNumber>0:
+        buttonPressed = True
+        annotations = [[]]
+        annotationNumber = 0
+        annotationStart = False
+        imgNumber-=1
+
+def next_slide():
+    global imgNumber, Images, buttonPressed, annotationNumber, annotations, annotationStart
+    if imgNumber < len(Images)-1 :
+        buttonPressed = True
+        annotations = [[]]
+        annotationNumber = 0
+        annotationStart = False
+        imgNumber+=1
+
+def append_index_to_annotations():
+    global annotationNumber, annotations, annotationStart, imgCurrent, indexFinger
+    if annotationStart is False:
+        annotationStart = True
+        annotationNumber += 1
+        annotations.append([])
+    cv2.circle(imgCurrent,indexFinger,thickness,(0,0,255),cv2.FILLED)
+    annotations[annotationNumber].append(indexFinger)
+
+def mark_annotations():
+    global annotations, imgCurrent
+    for i in range(len(annotations)):
+        for j in range(len(annotations[i])):
+            if j != 0:
+                cv2.line(imgCurrent,annotations[i][j-1],annotations[i][j],(0,0,200),12)
 
 while(True):
     #import images
     success, img = cap.read()
     img = cv2.flip(img,1)
 
-    pathFullImg = os.path.join(folderPath,pathImages[imgNumber])
+    pathFullImg = os.path.join(folderPath,Images[imgNumber])
     imgCurrent = cv2.imread(pathFullImg)
     imgCurrent = cv2.resize(imgCurrent,(width,height))
 
     hands, img = detector.findHands(img)
-    cv2.line(img,(0,gestureThreshold),(width,gestureThreshold),(0,255,0),5)
 
     if hands and buttonPressed is False:
         hand = hands[0]
@@ -52,49 +89,31 @@ while(True):
 
         lmList = hand['lmList']
         #constrain values
-        xVal = int(np.interp(lmList[8][0],[width//2,w],[0,width]))
-        yVal = int(np.interp(lmList[8][1],[150,height-150],[0,height]))
-        indexFinger = xVal,yVal
-
-        if(cy <= gestureThreshold):
-            # annotationStart = False
-            #1 move left
-            if fingers == [1,0,0,0,0]:
-                if imgNumber>0:
+        # xVal = int(np.interp(lmList[8][0],[width//2,w],[0,width]))
+        # yVal = int(np.interp(lmList[8][1],[150,height-150],[0,height]))
+        indexFinger = lmList[8][0]*2,lmList[8][1]*2
+        #1 move left
+        if fingers == [1,0,0,0,0]:
+            previous_slide()
+        #2 move right
+        if fingers == [0,0,0,0,1]:
+            next_slide()
+        #3 pointer
+        if fingers == [0,1,0,0,0]:
+            annotationStart = False
+            cv2.circle(imgCurrent,indexFinger,thickness,(0,0,255),cv2.FILLED)
+        #4 draw
+        if fingers == [0,1,1,0,0]:
+            append_index_to_annotations()
+        else:
+            annotationStart = False
+        #5 erase
+        if fingers == [0,1,1,1,0]:
+            if annotations:
+                if annotationNumber >= 0 :        
+                    annotations.pop(-1)
+                    annotationNumber -= 1
                     buttonPressed = True
-                    annotations = [[]]
-                    annotationNumber = 0
-                    annotationStart = False
-                    imgNumber-=1
-            #2 move right
-            if fingers == [0,0,0,0,1]:
-                if imgNumber < len(pathImages)-1 :
-                    buttonPressed = True
-                    annotations = [[]]
-                    annotationNumber = 0
-                    annotationStart = False
-                    imgNumber+=1
-            #3 pointer
-            if fingers == [0,1,0,0,0]:
-                annotationStart = False
-                cv2.circle(imgCurrent,indexFinger,12,(0,0,255),cv2.FILLED)
-            #4 draw
-            if fingers == [0,1,1,0,0]:
-                if annotationStart is False:
-                    annotationStart = True
-                    annotationNumber += 1
-                    annotations.append([])
-                cv2.circle(imgCurrent,indexFinger,12,(0,0,255),cv2.FILLED)
-                annotations[annotationNumber].append(indexFinger)
-            else:
-                annotationStart = False
-            #5 erase
-            if fingers == [0,1,1,1,0]:
-                if annotations:
-                    if annotationNumber >= 0 :        
-                        annotations.pop(-1)
-                        annotationNumber -= 1
-                        buttonPressed = True
     else:
         annotationStart = False
     #Button Pressed Iterations
@@ -104,10 +123,7 @@ while(True):
             buttonCounter = 0
             buttonPressed = False
 
-    for i in range(len(annotations)):
-        for j in range(len(annotations[i])):
-            if j != 0:
-                cv2.line(imgCurrent,annotations[i][j-1],annotations[i][j],(0,0,200),12)
+    mark_annotations()
 
     #adding webcam images on the slide
     imgSmall = cv2.resize(img,(ws,hs))
